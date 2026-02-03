@@ -58,7 +58,8 @@ Unauthorized usage is illegal and unethical. The author is not responsible for a
 
 ## 📁 Project Structure
 
-├── requirements.txt\n
+├── requirements.txt
+
 └── Reverse Shell Handler.py
 
 ---
