@@ -60,7 +60,7 @@ Unauthorized usage is illegal and unethical. The author is not responsible for a
 ```
 .
 ├── Reverse_Shell_Handler.py  # Main Application Source Code
-├── requirements.txt           # External dependencies (pyperclip)
+├── requirements.txt          # External dependencies (pyperclip)
 └── README.md                 # Project Documentation
 
 ```
