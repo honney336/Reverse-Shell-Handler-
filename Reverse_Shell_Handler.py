@@ -215,28 +215,20 @@ class ReverseShellGenerator:
                     
                     text = data.decode('utf-8', errors='replace')
                     
-                    # Remove ANSI color codes: [;94m, [1;31m, etc.
                     text = re.sub(r'\x1b\[[0-9;]*m', '', text)
                     
-                    # Remove bracketed paste mode: [?2004h and [?2004l
                     text = re.sub(r'\x1b\[\?2004[hl]', '', text)
                     
-                    # Remove terminal title sequences: ]0;...
                     text = re.sub(r'\x1b\]0;[^\x07]*\x07', '', text)
                     
-                    # Remove cursor movement: [C
                     text = re.sub(r'\x1b\[[A-Z]', '', text)
                     
-                    # Remove carriage returns
                     text = text.replace('\r', '')
                     
-                    # **FIX: Remove duplicate prompts on same line**
                     text = re.sub(r'└─#\s+└─#\s+', '└─# ', text)
                     
-                    # **FIX: Remove └─# followed by space at end of line (before newline)**
                     text = re.sub(r'└─#\s+\n', '\n', text)
                     
-                    # Display cleaned output
                     if text.strip():
                         self.shell_output.insert(tk.END, text)
                         self.shell_output.see(tk.END)
