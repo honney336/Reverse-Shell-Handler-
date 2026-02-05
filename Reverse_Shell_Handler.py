@@ -253,17 +253,6 @@ class ReverseShellGenerator:
         else:
             self.client_socket.send((cmd + '\n').encode())
         self.cmd_entry.delete(0, tk.END)
-    def send_command(self):
-        cmd = self.cmd_entry.get().strip()
-        if not cmd or not self.is_connected: return
-        self.command_history.append(cmd)
-        self.history_index = len(self.command_history)
-        
-        if cmd.lower() in ['clear', 'cls']:
-            self.shell_output.delete(1.0, tk.END)
-        else:
-            self.client_socket.send((cmd + '\n').encode())
-        self.cmd_entry.delete(0, tk.END)
 
     def navigate_history(self, event):
         if self.command_history:
